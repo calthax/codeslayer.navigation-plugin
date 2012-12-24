@@ -1,0 +1,8 @@
+[plugin]
+lib=libnavigationcodeslayerplugin
+version=@PACKAGE_VERSION@
+name=Navigate Editors
+description=A plugin to navigate through the open editors.
+authors=Jeff Johnston <jeff.johnston.mn@gmail.com>
+copyright=Copyright © 2011 Jeff Johnston
+website=http://codeslayer.org
