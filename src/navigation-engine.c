@@ -143,6 +143,7 @@ editor_switched_action (NavigationEngine *engine,
   g_print ("editor_switched_action\n");
 
   add_editor (engine, editor);
+  remove_duplicates (engine);
 
   print_list (engine);
 }                                                        
@@ -172,11 +173,15 @@ editor_removed_action (NavigationEngine *engine,
 
   count = get_editor_count_within_position (engine, editor);
   priv->position = priv->position - count;
+  g_print ("editor_count_within_position - %d\n", count);
+  
+  priv->list = g_list_remove_all (priv->list, editor);
+
+  print_list (engine);
 
   count = get_duplicate_count_within_position (engine, editor);
+  g_print ("duplicate_count_within_position - %d\n", count);
   priv->position = priv->position - count;
-
-  priv->list = g_list_remove_all (priv->list, editor);
 
   remove_duplicates (engine);
 
@@ -308,7 +313,7 @@ remove_duplicates (NavigationEngine *engine)
 
   length = g_list_length (priv->list);
   
-  if (length <= 2)
+  if (length < 2)
     return;
   
   g_print ("remove_duplicates\n");
