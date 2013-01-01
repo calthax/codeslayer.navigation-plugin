@@ -44,7 +44,6 @@ static gint get_editor_count_within_position     (NavigationEngine      *engine,
                                                   CodeSlayerEditor      *editor);
 static gint get_duplicate_count_within_position  (NavigationEngine      *engine, 
                                                   CodeSlayerEditor      *editor);
-static CodeSlayerDocument* clone_document        (CodeSlayerEditor      *editor);
 static void print_list                           (NavigationEngine      *engine);
                             
 #define NAVIGATION_ENGINE_GET_PRIVATE(obj) \
@@ -102,6 +101,7 @@ navigation_engine_new (CodeSlayer *codeslayer,
   NavigationEnginePrivate *priv;
   NavigationEngine *engine;
   GList *editors;
+  GList *tmp;
 
   engine = NAVIGATION_ENGINE (g_object_new (navigation_engine_get_type (), NULL));
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
@@ -124,12 +124,16 @@ navigation_engine_new (CodeSlayer *codeslayer,
                                                       G_CALLBACK (editor_removed_action), engine);
                                                       
   editors = codeslayer_get_all_editors (codeslayer);
-  while (editors != NULL)
+  tmp = editors;
+  
+  while (tmp != NULL)
     {
-      CodeSlayerEditor *editor = editors->data;
+      CodeSlayerEditor *editor = tmp->data;
       add_editor (NAVIGATION_ENGINE (engine), editor);
-      editors = g_list_next (editors);
+      tmp = g_list_next (tmp);
     }
+  
+  g_list_free (editors);      
     
   print_list (engine);
 
@@ -194,6 +198,7 @@ previous_action (NavigationEngine *engine)
   NavigationEnginePrivate *priv;
   CodeSlayerEditor *editor;
   CodeSlayerDocument *document;
+  const gchar *file_path;
   
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
@@ -206,10 +211,11 @@ previous_action (NavigationEngine *engine)
   
   editor = g_list_nth_data (priv->list, priv->position);
   
-  document = clone_document (editor);
+  document = codeslayer_editor_get_document (editor);
+  file_path = codeslayer_document_get_file_path (document);
   
   g_signal_handler_block (priv->codeslayer, priv->editor_switched_id);
-  codeslayer_select_editor (priv->codeslayer, document);
+  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, 0);
   g_signal_handler_unblock (priv->codeslayer, priv->editor_switched_id);
 
   g_object_unref (document);
@@ -223,6 +229,7 @@ next_action (NavigationEngine *engine)
   NavigationEnginePrivate *priv;
   CodeSlayerEditor *editor;
   CodeSlayerDocument *document;
+  const gchar *file_path;
   gint length;
   
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
@@ -238,10 +245,11 @@ next_action (NavigationEngine *engine)
   
   editor = g_list_nth_data (priv->list, priv->position);
   
-  document = clone_document (editor);
+  document = codeslayer_editor_get_document (editor);
+  file_path = codeslayer_document_get_file_path (document);
   
   g_signal_handler_block (priv->codeslayer, priv->editor_switched_id);
-  codeslayer_select_editor (priv->codeslayer, document);
+  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, 0);
   g_signal_handler_unblock (priv->codeslayer, priv->editor_switched_id);
   
   g_object_unref (document);
@@ -332,21 +340,6 @@ remove_duplicates (NavigationEngine *engine)
 
   g_list_free (priv->list);
   priv->list = clean_list;
-}
-
-static CodeSlayerDocument*
-clone_document (CodeSlayerEditor *editor)
-{
-  CodeSlayerDocument *result;
-  CodeSlayerDocument *document;
-
-  result = codeslayer_document_new ();
-
-  document = codeslayer_editor_get_document (editor);
-  codeslayer_document_set_file_path (result, codeslayer_document_get_file_path (document));
-  codeslayer_document_set_project (result, codeslayer_document_get_project (document));
-  
-  return result;
 }
 
 static void
