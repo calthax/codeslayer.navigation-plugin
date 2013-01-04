@@ -35,6 +35,8 @@ static void editor_added_action                  (NavigationEngine      *engine,
                                                   CodeSlayerEditor      *editor);
 static void editor_removed_action                (NavigationEngine      *engine,
                                                   CodeSlayerEditor      *editor);
+static void editor_navigated_action              (NavigationEngine      *engine,
+                                                  CodeSlayerEditor      *editor);
 static void previous_action                      (NavigationEngine      *engine);
 static void next_action                          (NavigationEngine      *engine);
 static void remove_duplicates                    (NavigationEngine      *engine);
@@ -57,6 +59,7 @@ struct _NavigationEnginePrivate
   gulong      editor_switched_id;
   gulong      editor_added_id;
   gulong      editor_removed_id;
+  gulong      editor_navigated_id;
   GList      *list;
   gint        position;
 };
@@ -122,6 +125,9 @@ navigation_engine_new (CodeSlayer *codeslayer,
 
   priv->editor_removed_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-removed", 
                                                       G_CALLBACK (editor_removed_action), engine);
+                                                      
+  priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-navigated", 
+                                                      G_CALLBACK (editor_navigated_action), engine);
                                                       
   editors = codeslayer_get_all_editors (codeslayer);
   tmp = editors;
@@ -221,6 +227,13 @@ previous_action (NavigationEngine *engine)
   g_object_unref (document);
 
   print_list (engine);
+}
+
+static void
+editor_navigated_action (NavigationEngine *engine,
+                         CodeSlayerEditor *editor)
+{
+  g_print ("editor file path %s\n", codeslayer_editor_get_file_path (editor));
 }
 
 static void
