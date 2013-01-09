@@ -43,6 +43,7 @@ struct _NavigationMenuClass
 
   void (*previous) (NavigationMenu *menu);
   void (*next) (NavigationMenu *menu);
+  void (*rank) (NavigationMenu *menu);
 };
 
 GType navigation_menu_get_type (void) G_GNUC_CONST;

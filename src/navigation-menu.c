@@ -23,16 +23,18 @@ static void navigation_menu_class_init (NavigationMenuClass *klass);
 static void navigation_menu_init       (NavigationMenu      *menu);
 static void navigation_menu_finalize   (NavigationMenu      *menu);
 
-static void previous_action        (NavigationMenu      *menu);
-static void next_action            (NavigationMenu      *menu);
-static void add_menu_items                (NavigationMenu      *menu,
-                                           GtkWidget             *submenu,
-                                           GtkAccelGroup         *accel_group);
+static void previous_action            (NavigationMenu      *menu);
+static void next_action                (NavigationMenu      *menu);
+static void rank_action                (NavigationMenu      *menu);
+static void add_menu_items             (NavigationMenu      *menu,
+                                        GtkWidget           *submenu,
+                                        GtkAccelGroup       *accel_group);
                                         
 enum
 {
   PREVIOUS,
   NEXT,
+  RANK,
   LAST_SIGNAL
 };
 
@@ -59,13 +61,21 @@ navigation_menu_class_init (NavigationMenuClass *klass)
                   NULL, NULL, 
                   g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
 
+  navigation_menu_signals[RANK] =
+    g_signal_new ("rank", 
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+                  G_STRUCT_OFFSET (NavigationMenuClass, rank),
+                  NULL, NULL, 
+                  g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
+
   G_OBJECT_CLASS (klass)->finalize = (GObjectFinalizeFunc) navigation_menu_finalize;
 }
 
 static void
 navigation_menu_init (NavigationMenu *menu)
 {
-  gtk_menu_item_set_label (GTK_MENU_ITEM (menu), "Navigate");
+  gtk_menu_item_set_label (GTK_MENU_ITEM (menu), "Navigation");
 }
 
 static void
@@ -97,22 +107,33 @@ add_menu_items (NavigationMenu *menu,
 {
   GtkWidget *previous_item;
   GtkWidget *next_item;
+  GtkWidget *rank_item;
 
-  previous_item = codeslayer_menu_item_new_with_label (_("Previous"));
+  previous_item = codeslayer_menu_item_new_with_label (_("previous"));
   gtk_widget_add_accelerator (previous_item, "activate", accel_group, 
                               GDK_KEY_comma, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
   gtk_menu_shell_append (GTK_MENU_SHELL (submenu), previous_item);
 
-  next_item = codeslayer_menu_item_new_with_label (_("Next"));
+  next_item = codeslayer_menu_item_new_with_label (_("next"));
   gtk_widget_add_accelerator (next_item, "activate", accel_group, 
                               GDK_KEY_period, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_menu_shell_append (GTK_MENU_SHELL (submenu), next_item);
+  
+  gtk_menu_shell_append (GTK_MENU_SHELL (submenu), gtk_separator_menu_item_new ());  
+  
+  rank_item = codeslayer_menu_item_new_with_label (_("rank"));
+  gtk_widget_add_accelerator (rank_item, "activate", accel_group, 
+                              GDK_KEY_grave, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_menu_shell_append (GTK_MENU_SHELL (submenu), rank_item);
   
   g_signal_connect_swapped (G_OBJECT (previous_item), "activate", 
                             G_CALLBACK (previous_action), menu);
    
   g_signal_connect_swapped (G_OBJECT (next_item), "activate", 
                             G_CALLBACK (next_action), menu);
+
+  g_signal_connect_swapped (G_OBJECT (rank_item), "activate", 
+                            G_CALLBACK (rank_action), menu);
 }
 
 static void 
@@ -125,4 +146,10 @@ static void
 next_action (NavigationMenu *menu) 
 {
   g_signal_emit_by_name ((gpointer) menu, "next");
+}
+
+static void 
+rank_action (NavigationMenu *menu) 
+{
+  g_signal_emit_by_name ((gpointer) menu, "rank");
 }
