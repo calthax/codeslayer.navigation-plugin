@@ -21,6 +21,7 @@
 
 #include <gtk/gtk.h>
 #include <codeslayer/codeslayer.h>
+#include "navigation-rank.h"
 
 G_BEGIN_DECLS
 
@@ -45,8 +46,9 @@ struct _NavigationPathClass
 
 GType navigation_path_get_type (void) G_GNUC_CONST;
 
-NavigationPath*  navigation_path_new  (CodeSlayer *codeslayer, 
-                                       GtkWidget  *menu);
+NavigationPath*  navigation_path_new  (CodeSlayer     *codeslayer, 
+                                       GtkWidget      *menu, 
+                                       NavigationRank *rank);
 
 G_END_DECLS
 

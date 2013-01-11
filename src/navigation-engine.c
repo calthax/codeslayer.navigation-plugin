@@ -76,7 +76,7 @@ navigation_engine_new (CodeSlayer *codeslayer,
   priv->codeslayer = codeslayer;
   
   priv->rank = navigation_rank_new  (codeslayer, menu);
-  priv->path = navigation_path_new  (codeslayer, menu);
+  priv->path = navigation_path_new  (codeslayer, menu, priv->rank);
                                                       
   return engine;
 }

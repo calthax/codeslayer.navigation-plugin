@@ -45,8 +45,10 @@ struct _NavigationRankClass
 
 GType navigation_rank_get_type (void) G_GNUC_CONST;
 
-NavigationRank*  navigation_rank_new  (CodeSlayer *codeslayer, 
-                                       GtkWidget  *menu);
+NavigationRank*    navigation_rank_new                      (CodeSlayer     *codeslayer, 
+                                                             GtkWidget      *menu);
+                                       
+CodeSlayerEditor*  navigation_rank_get_prev_editor          (NavigationRank *rank);
 
 G_END_DECLS
 

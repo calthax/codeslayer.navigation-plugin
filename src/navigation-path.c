@@ -37,11 +37,12 @@ typedef struct _NavigationPathPrivate NavigationPathPrivate;
 
 struct _NavigationPathPrivate
 {
-  CodeSlayer *codeslayer;
-  gulong      editor_removed_id;
-  gulong      editor_navigated_id;
-  GList      *path;
-  gint        position;
+  CodeSlayer     *codeslayer;
+  NavigationRank *rank;
+  gulong          editor_removed_id;
+  gulong          editor_navigated_id;
+  GList          *path;
+  gint            position;
 };
 
 G_DEFINE_TYPE (NavigationPath, navigation_path, G_TYPE_OBJECT)
@@ -77,8 +78,9 @@ navigation_path_finalize (NavigationPath *path)
 }
 
 NavigationPath*
-navigation_path_new (CodeSlayer *codeslayer, 
-                       GtkWidget  *menu)
+navigation_path_new (CodeSlayer     *codeslayer, 
+                     GtkWidget      *menu, 
+                     NavigationRank *rank)
 {
   NavigationPathPrivate *priv;
   NavigationPath *path;
@@ -87,6 +89,7 @@ navigation_path_new (CodeSlayer *codeslayer,
   priv = NAVIGATION_PATH_GET_PRIVATE (path);
 
   priv->codeslayer = codeslayer;
+  priv->rank = rank;
   
   g_signal_connect_swapped (G_OBJECT (menu), "previous", 
                             G_CALLBACK (previous_action), path);
@@ -110,11 +113,22 @@ editor_removed_action (NavigationPath *path,
 }
 
 static void
-editor_navigated_action (NavigationPath *path,
+editor_navigated_action (NavigationPath   *path,
                          CodeSlayerEditor *editor)
 {
   NavigationPathPrivate *priv;
   priv = NAVIGATION_PATH_GET_PRIVATE (path);
+  
+  if (priv->path == NULL)
+    {
+      CodeSlayerEditor *prev_editor;
+      prev_editor = navigation_rank_get_prev_editor (priv->rank);
+      if (prev_editor != NULL)
+        {
+          priv->path = g_list_append (priv->path, prev_editor);
+          priv->position = g_list_length (priv->path) - 1;        
+        }
+    }
   
   priv->path = g_list_append (priv->path, editor);
   priv->position = g_list_length (priv->path) - 1;

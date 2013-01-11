@@ -19,17 +19,17 @@
 #include "navigation-rank.h"
 
 static void navigation_rank_class_init  (NavigationRankClass *klass);
-static void navigation_rank_init        (NavigationRank      *engine);
-static void navigation_rank_finalize    (NavigationRank      *engine);
+static void navigation_rank_init        (NavigationRank      *rank);
+static void navigation_rank_finalize    (NavigationRank      *rank);
 
-static void editor_switched_action        (NavigationRank      *engine,
+static void editor_switched_action        (NavigationRank      *rank,
                                            CodeSlayerEditor      *editor);
-static void editor_removed_action         (NavigationRank      *engine,
+static void editor_removed_action         (NavigationRank      *rank,
                                            CodeSlayerEditor      *editor);
-static void rank_action                   (NavigationRank      *engine);
-static void print_rank                    (NavigationRank      *engine);
+static void rank_action                   (NavigationRank      *rank);
+static void print_rank                    (NavigationRank      *rank);
 static void add_rank_editor               (CodeSlayerEditor      *editor, 
-                                           NavigationRank      *engine);
+                                           NavigationRank      *rank);
                             
 #define NAVIGATION_RANK_GET_PRIVATE(obj) \
   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), NAVIGATION_RANK_TYPE, NavigationRankPrivate))
@@ -55,25 +55,25 @@ navigation_rank_class_init (NavigationRankClass *klass)
 }
 
 static void
-navigation_rank_init (NavigationRank *engine) 
+navigation_rank_init (NavigationRank *rank) 
 {
   NavigationRankPrivate *priv;
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
   priv->rank = NULL;
 }
 
 static void
-navigation_rank_finalize (NavigationRank *engine)
+navigation_rank_finalize (NavigationRank *rank)
 {
   NavigationRankPrivate *priv;
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_switched_id);
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_removed_id);
   
   if (priv->rank != NULL)
     g_list_free (priv->rank);
   
-  G_OBJECT_CLASS (navigation_rank_parent_class)->finalize (G_OBJECT (engine));
+  G_OBJECT_CLASS (navigation_rank_parent_class)->finalize (G_OBJECT (rank));
 }
 
 NavigationRank*
@@ -81,45 +81,66 @@ navigation_rank_new (CodeSlayer *codeslayer,
                      GtkWidget  *menu)
 {
   NavigationRankPrivate *priv;
-  NavigationRank *engine;
+  NavigationRank *rank;
   GList *editors;
 
-  engine = NAVIGATION_RANK (g_object_new (navigation_rank_get_type (), NULL));
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
+  rank = NAVIGATION_RANK (g_object_new (navigation_rank_get_type (), NULL));
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
 
   priv->codeslayer = codeslayer;
   
   g_signal_connect_swapped (G_OBJECT (menu), "rank", 
-                            G_CALLBACK (rank_action), engine);
+                            G_CALLBACK (rank_action), rank);
                             
   priv->editor_switched_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-switched", 
-                                                       G_CALLBACK (editor_switched_action), engine);
+                                                       G_CALLBACK (editor_switched_action), rank);
 
   priv->editor_removed_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-removed", 
-                                                       G_CALLBACK (editor_removed_action), engine);
+                                                       G_CALLBACK (editor_removed_action), rank);
 
   editors = codeslayer_get_all_editors (codeslayer);
   if (editors != NULL)
-    g_list_foreach (editors, (GFunc) add_rank_editor, NAVIGATION_RANK (engine));
+    g_list_foreach (editors, (GFunc) add_rank_editor, NAVIGATION_RANK (rank));
                                                       
-  return engine;
+  return rank;
+}
+
+CodeSlayerEditor*  
+navigation_rank_get_prev_editor (NavigationRank *rank)
+{
+  NavigationRankPrivate *priv;
+  GList *list;
+
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
+  
+  list = g_list_first (priv->rank);
+  
+  if (list != NULL)
+    list = g_list_next (priv->rank);
+  
+  if (list == NULL)
+    return NULL;
+    
+  return list->data;
 }
 
 static void
 add_rank_editor (CodeSlayerEditor *editor, 
-                 NavigationRank *engine)
+                 NavigationRank   *rank)
 {
   NavigationRankPrivate *priv;
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
-  priv->rank = g_list_append (priv->rank, editor);
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
+  priv->rank = g_list_prepend (priv->rank, editor);
+  
+  print_rank (rank);
 }
 
 static void
-editor_switched_action (NavigationRank *engine,
+editor_switched_action (NavigationRank   *rank,
                         CodeSlayerEditor *editor)
 {
   NavigationRankPrivate *priv;  
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
   
   if (priv->rank == NULL)
     {
@@ -131,36 +152,36 @@ editor_switched_action (NavigationRank *engine,
       priv->rank = g_list_prepend (priv->rank, editor);        
     }
 
-  print_rank (engine);
+  print_rank (rank);
 }
 
 static void
-editor_removed_action (NavigationRank *engine,
+editor_removed_action (NavigationRank   *rank,
                        CodeSlayerEditor *editor)
 {
   NavigationRankPrivate *priv;  
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
   
   if (priv->rank != NULL)
     priv->rank = g_list_remove (priv->rank, editor);
 
-  print_rank (engine);
+  print_rank (rank);
 }
 
 static void
-rank_action (NavigationRank *engine)
+rank_action (NavigationRank *rank)
 {
-  print_rank (engine);
+  print_rank (rank);
 }
 
 static void
-print_rank (NavigationRank *engine)
+print_rank (NavigationRank *rank)
 {
   NavigationRankPrivate *priv;
   gint length;
   guint i = 0;
   
-  priv = NAVIGATION_RANK_GET_PRIVATE (engine);
+  priv = NAVIGATION_RANK_GET_PRIVATE (rank);
   
   g_print ("****** rank ********\n");
   
