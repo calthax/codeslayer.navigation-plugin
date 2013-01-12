@@ -146,6 +146,14 @@ editors_equal (CodeSlayerEditor *from_editor,
                     codeslayer_editor_get_file_path (to_editor)) == 0;
 }
 
+static gboolean
+nodes_equal (NavigationNode *from_node,
+             NavigationNode *to_node)
+{
+  return g_strcmp0 (navigation_node_get_file_path (from_node), 
+                    navigation_node_get_file_path (to_node)) == 0;
+}
+
 static void
 editor_navigated_action (NavigationEngine *engine,
                          CodeSlayerEditor *from_editor,
@@ -172,7 +180,7 @@ editor_navigated_action (NavigationEngine *engine,
       curr_node = g_list_nth_data (priv->path, priv->position);
       from_node = create_node (from_editor);
       
-      if (!navigation_node_equals (curr_node, from_node))
+      if (!nodes_equal (curr_node, from_node))
         {
           g_list_foreach (priv->path, (GFunc) g_object_unref, NULL);
           g_list_free (priv->path);
