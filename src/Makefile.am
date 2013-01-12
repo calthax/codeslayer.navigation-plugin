@@ -1,6 +1,8 @@
 lib_LTLIBRARIES = libnavigationcodeslayerplugin.la
 
 libnavigationcodeslayerplugin_la_SOURCES = \
+    navigation-node.h \
+    navigation-node.c \
     navigation-engine.h \
     navigation-engine.c \
     navigation-menu.h \

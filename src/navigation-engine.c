@@ -17,13 +17,12 @@
  */
 
 #include "navigation-engine.h"
+#include "navigation-node.h"
 
 static void navigation_engine_class_init  (NavigationEngineClass *klass);
 static void navigation_engine_init        (NavigationEngine      *engine);
 static void navigation_engine_finalize    (NavigationEngine      *engine);
 
-static gboolean editor_within_position    (NavigationEngine      *engine,
-                                           CodeSlayerEditor      *editor);
 static void editor_removed_action         (NavigationEngine      *engine,
                                            CodeSlayerEditor      *editor);
 static void editor_navigated_action       (NavigationEngine      *engine,
@@ -75,6 +74,8 @@ navigation_engine_finalize (NavigationEngine *engine)
   
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_removed_id);
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_navigated_id);
+
+  g_list_foreach (priv->path, (GFunc) g_object_unref, NULL);
   
   if (priv->path != NULL)
     g_list_free (priv->path);
@@ -101,30 +102,51 @@ navigation_engine_new (CodeSlayer *codeslayer,
                             G_CALLBACK (next_action), engine);
                             
   priv->editor_removed_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-removed", 
-                                                       G_CALLBACK (editor_removed_action), engine);
+                                                      G_CALLBACK (editor_removed_action), engine);
 
   priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-navigated", 
-                                                      G_CALLBACK (editor_navigated_action), engine);
+                                                        G_CALLBACK (editor_navigated_action), engine);
                                                       
   return engine;
 }
 
+static NavigationNode*
+create_node (CodeSlayerEditor *editor)
+{
+  NavigationNode *node;
+  CodeSlayerDocument *document;
+
+  node = navigation_node_new ();
+  
+  document = codeslayer_editor_get_document (editor);
+  
+  navigation_node_set_file_path (node, codeslayer_editor_get_file_path (editor)); 
+  navigation_node_set_line_number (node, codeslayer_document_get_line_number (document)); 
+
+  return node;
+}
+
 static gboolean
-editor_within_position (NavigationEngine *engine,
-                        CodeSlayerEditor *editor)
+remove_node (NavigationEngine *engine, 
+             NavigationNode   *node_to_remove)
 {
   NavigationEnginePrivate *priv;  
-  gint i = 0;
+  GList *list;
 
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  
-  for (; i <= priv->position; i++)
-    {
-      CodeSlayerEditor *current = g_list_nth_data (priv->path, i);
-      if (current == editor)
-        return TRUE;
-    }    
 
+  list = priv->path;
+  while (list != NULL)
+    {
+      NavigationNode *node = list->data;
+      if (navigation_node_equals (node, node_to_remove))
+        {
+          priv->path = g_list_remove (priv->path, node);
+          return TRUE;          
+        }
+      list = g_list_next (list);
+    }
+  
   return FALSE;
 }
 
@@ -132,15 +154,13 @@ static void
 editor_removed_action (NavigationEngine *engine,
                        CodeSlayerEditor *editor)
 {
-  NavigationEnginePrivate *priv;  
-  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  
-  if (editor_within_position (engine, editor))
-    {
-      priv->position = priv->position - 1;
-    }
-    
-  priv->path = g_list_remove (priv->path, editor);    
+  NavigationNode *node;
+  node = create_node (editor);
+
+  while (remove_node (engine, node))
+    ;
+
+  g_object_unref (node);
 
   print_path (engine);
 }
@@ -155,11 +175,11 @@ editor_navigated_action (NavigationEngine *engine,
   
   if (priv->path == NULL)
     {
-      priv->path = g_list_append (priv->path, from_editor);
+      priv->path = g_list_append (priv->path, create_node (from_editor));
       priv->position = g_list_length (priv->path) - 1;
     }
   
-  priv->path = g_list_append (priv->path, to_editor);
+  priv->path = g_list_append (priv->path, create_node (to_editor));
   priv->position = g_list_length (priv->path) - 1;
 
   print_path (engine);
@@ -169,9 +189,9 @@ static void
 previous_action (NavigationEngine *engine)
 {
   NavigationEnginePrivate *priv;
-  CodeSlayerEditor *editor;
-  CodeSlayerDocument *document;
+  NavigationNode *node;
   const gchar *file_path;
+  gint line_number;
   
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
@@ -182,12 +202,12 @@ previous_action (NavigationEngine *engine)
 
   priv->position = priv->position - 1;
   
-  editor = g_list_nth_data (priv->path, priv->position);
+  node = g_list_nth_data (priv->path, priv->position);
   
-  document = codeslayer_editor_get_document (editor);
-  file_path = codeslayer_document_get_file_path (document);
+  file_path = navigation_node_get_file_path (node);
+  line_number = navigation_node_get_line_number (node);
   
-  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, 0);
+  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number);
 
   print_path (engine);
 }
@@ -196,9 +216,9 @@ static void
 next_action (NavigationEngine *engine)
 {
   NavigationEnginePrivate *priv;
-  CodeSlayerEditor *editor;
-  CodeSlayerDocument *document;
+  NavigationNode *node;
   const gchar *file_path;
+  gint line_number;
   gint length;
   
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
@@ -212,12 +232,12 @@ next_action (NavigationEngine *engine)
 
   priv->position = priv->position + 1;
   
-  editor = g_list_nth_data (priv->path, priv->position);
+  node = g_list_nth_data (priv->path, priv->position);
   
-  document = codeslayer_editor_get_document (editor);
-  file_path = codeslayer_document_get_file_path (document);
+  file_path = navigation_node_get_file_path (node);
+  line_number = navigation_node_get_line_number (node);
   
-  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, 0);
+  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number);
   
   print_path (engine);
 }
@@ -237,13 +257,15 @@ print_path (NavigationEngine *engine)
   
   for (; i < length; ++i)
     {
-      CodeSlayerEditor *editor = g_list_nth_data (priv->path, i);
+      NavigationNode *node = g_list_nth_data (priv->path, i);
       const gchar *file_path;
-      file_path = codeslayer_editor_get_file_path (editor);
+      gint line_number;
+      file_path = navigation_node_get_file_path (node);
+      line_number = navigation_node_get_line_number (node);
       if (priv->position == i)
-        g_print ("%s *\n", file_path);
+        g_print ("%s:%d *\n", file_path, line_number);
       else
-        g_print ("%s\n", file_path);
+        g_print ("%s:%d\n", file_path, line_number);
     }
     
   g_print ("**************************\n");

@@ -94,6 +94,7 @@ am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libnavigationcodeslayerplugin_la_LIBADD =
 am_libnavigationcodeslayerplugin_la_OBJECTS =  \
+	libnavigationcodeslayerplugin_la-navigation-node.lo \
 	libnavigationcodeslayerplugin_la-navigation-engine.lo \
 	libnavigationcodeslayerplugin_la-navigation-menu.lo \
 	libnavigationcodeslayerplugin_la-navigation-plugin.lo
@@ -287,6 +288,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libnavigationcodeslayerplugin.la
 libnavigationcodeslayerplugin_la_SOURCES = \
+    navigation-node.h \
+    navigation-node.c \
     navigation-engine.h \
     navigation-engine.c \
     navigation-menu.h \
@@ -374,6 +377,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-engine.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-menu.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-node.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-plugin.Plo@am__quote@
 
 .c.o:
@@ -396,6 +400,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+libnavigationcodeslayerplugin_la-navigation-node.lo: navigation-node.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libnavigationcodeslayerplugin_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libnavigationcodeslayerplugin_la-navigation-node.lo -MD -MP -MF $(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-node.Tpo -c -o libnavigationcodeslayerplugin_la-navigation-node.lo `test -f 'navigation-node.c' || echo '$(srcdir)/'`navigation-node.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-node.Tpo $(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-node.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='navigation-node.c' object='libnavigationcodeslayerplugin_la-navigation-node.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libnavigationcodeslayerplugin_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libnavigationcodeslayerplugin_la-navigation-node.lo `test -f 'navigation-node.c' || echo '$(srcdir)/'`navigation-node.c
 
 libnavigationcodeslayerplugin_la-navigation-engine.lo: navigation-engine.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libnavigationcodeslayerplugin_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libnavigationcodeslayerplugin_la-navigation-engine.lo -MD -MP -MF $(DEPDIR)/libnavigationcodeslayerplugin_la-navigation-engine.Tpo -c -o libnavigationcodeslayerplugin_la-navigation-engine.lo `test -f 'navigation-engine.c' || echo '$(srcdir)/'`navigation-engine.c
