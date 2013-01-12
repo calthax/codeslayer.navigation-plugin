@@ -18,24 +18,21 @@
 
 #include "navigation-engine.h"
 
-static void navigation_engine_class_init       (NavigationEngineClass *klass);
-static void navigation_engine_init             (NavigationEngine      *engine);
-static void navigation_engine_finalize         (NavigationEngine      *engine);
+static void navigation_engine_class_init  (NavigationEngineClass *klass);
+static void navigation_engine_init        (NavigationEngine      *engine);
+static void navigation_engine_finalize    (NavigationEngine      *engine);
 
-static void add_rank_editor                    (CodeSlayerEditor      *editor, 
-                                                NavigationEngine      *engine);
-static CodeSlayerEditor* get_prev_rank_editor  (NavigationEngine      *engine);
-static void editor_removed_action              (NavigationEngine      *engine,
-                                                CodeSlayerEditor      *editor);
-static void editor_navigated_action            (NavigationEngine      *engine,
-                                                CodeSlayerEditor      *editor);
-static void editor_switched_action             (NavigationEngine      *engine,
-                                                CodeSlayerEditor      *editor);
-static void previous_action                    (NavigationEngine      *engine);
-static void next_action                        (NavigationEngine      *engine);
+static gboolean editor_within_position    (NavigationEngine      *engine,
+                                           CodeSlayerEditor      *editor);
+static void editor_removed_action         (NavigationEngine      *engine,
+                                           CodeSlayerEditor      *editor);
+static void editor_navigated_action       (NavigationEngine      *engine,
+                                           CodeSlayerEditor      *from_editor,
+                                           CodeSlayerEditor      *to_editor);
+static void previous_action               (NavigationEngine      *engine);
+static void next_action                   (NavigationEngine      *engine);
 
-static void print_path                         (NavigationEngine      *engine);
-static void print_rank                         (NavigationEngine      *engine);
+static void print_path                    (NavigationEngine      *engine);
 
 #define NAVIGATION_ENGINE_GET_PRIVATE(obj) \
   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), NAVIGATION_ENGINE_TYPE, NavigationEnginePrivate))
@@ -49,7 +46,6 @@ struct _NavigationEnginePrivate
   gulong      editor_removed_id;
   gulong      editor_navigated_id;
   GList      *path;
-  GList      *rank;
   gint        position;
 };
 
@@ -69,7 +65,6 @@ navigation_engine_init (NavigationEngine *engine)
   NavigationEnginePrivate *priv;
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   priv->path = NULL;
-  priv->rank = NULL;
 }
 
 static void
@@ -78,15 +73,11 @@ navigation_engine_finalize (NavigationEngine *engine)
   NavigationEnginePrivate *priv;
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
-  g_signal_handler_disconnect (priv->codeslayer, priv->editor_switched_id);
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_removed_id);
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_navigated_id);
   
   if (priv->path != NULL)
     g_list_free (priv->path);
-  
-  if (priv->rank != NULL)
-    g_list_free (priv->rank);
   
   G_OBJECT_CLASS (navigation_engine_parent_class)->finalize (G_OBJECT (engine));
 }
@@ -97,7 +88,6 @@ navigation_engine_new (CodeSlayer *codeslayer,
 {
   NavigationEnginePrivate *priv;
   NavigationEngine *engine;
-  GList *editors;
 
   engine = NAVIGATION_ENGINE (g_object_new (navigation_engine_get_type (), NULL));
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
@@ -110,40 +100,32 @@ navigation_engine_new (CodeSlayer *codeslayer,
   g_signal_connect_swapped (G_OBJECT (menu), "next", 
                             G_CALLBACK (next_action), engine);
                             
-  priv->editor_switched_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-switched", 
-                                                       G_CALLBACK (editor_switched_action), engine);
-
   priv->editor_removed_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-removed", 
                                                        G_CALLBACK (editor_removed_action), engine);
 
   priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-navigated", 
                                                       G_CALLBACK (editor_navigated_action), engine);
-
-  editors = codeslayer_get_all_editors (codeslayer);
-  if (editors != NULL)
-    g_list_foreach (editors, (GFunc) add_rank_editor, NAVIGATION_ENGINE (engine));
                                                       
   return engine;
 }
 
-static void
-editor_switched_action (NavigationEngine *engine,
+static gboolean
+editor_within_position (NavigationEngine *engine,
                         CodeSlayerEditor *editor)
 {
   NavigationEnginePrivate *priv;  
+  gint i = 0;
+
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
-  if (priv->rank == NULL)
+  for (; i <= priv->position; i++)
     {
-      priv->rank = g_list_append (priv->rank, editor);
-    }
-  else
-    {
-      priv->rank = g_list_remove (priv->rank, editor);
-      priv->rank = g_list_prepend (priv->rank, editor);        
-    }
+      CodeSlayerEditor *current = g_list_nth_data (priv->path, i);
+      if (current == editor)
+        return TRUE;
+    }    
 
-  print_rank (engine);
+  return FALSE;
 }
 
 static void
@@ -152,28 +134,32 @@ editor_removed_action (NavigationEngine *engine,
 {
   NavigationEnginePrivate *priv;  
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  priv->rank = g_list_remove (priv->rank, editor);
+  
+  if (editor_within_position (engine, editor))
+    {
+      priv->position = priv->position - 1;
+    }
+    
+  priv->path = g_list_remove (priv->path, editor);    
+
+  print_path (engine);
 }
 
 static void
 editor_navigated_action (NavigationEngine *engine,
-                         CodeSlayerEditor *editor)
+                         CodeSlayerEditor *from_editor,
+                         CodeSlayerEditor *to_editor)
 {
   NavigationEnginePrivate *priv;
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
   if (priv->path == NULL)
     {
-      CodeSlayerEditor *prev_editor;
-      prev_editor = get_prev_rank_editor (engine);
-      if (prev_editor != NULL)
-        {
-          priv->path = g_list_append (priv->path, prev_editor);
-          priv->position = g_list_length (priv->path) - 1;
-        }
+      priv->path = g_list_append (priv->path, from_editor);
+      priv->position = g_list_length (priv->path) - 1;
     }
   
-  priv->path = g_list_append (priv->path, editor);
+  priv->path = g_list_append (priv->path, to_editor);
   priv->position = g_list_length (priv->path) - 1;
 
   print_path (engine);
@@ -236,39 +222,6 @@ next_action (NavigationEngine *engine)
   print_path (engine);
 }
 
-static CodeSlayerEditor*
-get_prev_rank_editor (NavigationEngine *engine)
-{
-  NavigationEnginePrivate *priv;
-  GList *list = NULL;
-  guint length;
-
-  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  
-  list = priv->rank;
-  
-  if (list == NULL)
-    return NULL;
-  
-  length = g_list_length (list);
-  
-  if (length > 1)
-    g_list_nth_data (list, 2);
-    
-  return g_list_nth_data (list, 1);
-}
-
-static void
-add_rank_editor (CodeSlayerEditor *editor, 
-                 NavigationEngine *engine)
-{
-  NavigationEnginePrivate *priv;
-  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  priv->rank = g_list_prepend (priv->rank, editor);
-  
-  print_rank (engine);
-}
-
 static void
 print_path (NavigationEngine *engine)
 {
@@ -291,30 +244,6 @@ print_path (NavigationEngine *engine)
         g_print ("%s *\n", file_path);
       else
         g_print ("%s\n", file_path);
-    }
-    
-  g_print ("**************************\n");
-}
-
-static void
-print_rank (NavigationEngine *engine)
-{
-  NavigationEnginePrivate *priv;
-  gint length;
-  guint i = 0;
-  
-  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  
-  g_print ("****** rank ********\n");
-  
-  length = g_list_length (priv->rank);
-  
-  for (; i < length; ++i)
-    {
-      CodeSlayerEditor *editor = g_list_nth_data (priv->rank, i);
-      const gchar *file_path;
-      file_path = codeslayer_editor_get_file_path (editor);
-      g_print ("%s\n", file_path);
     }
     
   g_print ("**************************\n");
