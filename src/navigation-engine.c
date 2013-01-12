@@ -23,8 +23,6 @@ static void navigation_engine_class_init  (NavigationEngineClass *klass);
 static void navigation_engine_init        (NavigationEngine      *engine);
 static void navigation_engine_finalize    (NavigationEngine      *engine);
 
-static void editor_removed_action         (NavigationEngine      *engine,
-                                           CodeSlayerEditor      *editor);
 static void editor_navigated_action       (NavigationEngine      *engine,
                                            CodeSlayerEditor      *from_editor,
                                            CodeSlayerEditor      *to_editor);
@@ -42,7 +40,6 @@ struct _NavigationEnginePrivate
 {
   CodeSlayer *codeslayer;
   gulong      editor_switched_id;
-  gulong      editor_removed_id;
   gulong      editor_navigated_id;
   GList      *path;
   gint        position;
@@ -72,7 +69,6 @@ navigation_engine_finalize (NavigationEngine *engine)
   NavigationEnginePrivate *priv;
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
-  g_signal_handler_disconnect (priv->codeslayer, priv->editor_removed_id);
   g_signal_handler_disconnect (priv->codeslayer, priv->editor_navigated_id);
 
   g_list_foreach (priv->path, (GFunc) g_object_unref, NULL);
@@ -101,9 +97,6 @@ navigation_engine_new (CodeSlayer *codeslayer,
   g_signal_connect_swapped (G_OBJECT (menu), "next", 
                             G_CALLBACK (next_action), engine);
                             
-  priv->editor_removed_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-removed", 
-                                                      G_CALLBACK (editor_removed_action), engine);
-
   priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-navigated", 
                                                         G_CALLBACK (editor_navigated_action), engine);
                                                       
@@ -126,43 +119,31 @@ create_node (CodeSlayerEditor *editor)
   return node;
 }
 
-static gboolean
-remove_node (NavigationEngine *engine, 
-             NavigationNode   *node_to_remove)
+static void
+clear_forward_positions (NavigationEngine *engine)
 {
-  NavigationEnginePrivate *priv;  
-  GList *list;
-
-  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-
-  list = priv->path;
-  while (list != NULL)
-    {
-      NavigationNode *node = list->data;
-      if (navigation_node_equals (node, node_to_remove))
-        {
-          priv->path = g_list_remove (priv->path, node);
-          return TRUE;          
-        }
-      list = g_list_next (list);
-    }
+  NavigationEnginePrivate *priv;
+  gint i;
+  gint length;
   
-  return FALSE;
+  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
+  i = priv->position + 1;
+  length = g_list_length (priv->path);
+  
+  for (; i < length; i++)
+    {
+      NavigationNode *node = g_list_nth_data (priv->path, i);
+      priv->path = g_list_remove (priv->path, node);
+      g_object_unref (node);
+    }
 }
 
-static void
-editor_removed_action (NavigationEngine *engine,
-                       CodeSlayerEditor *editor)
+static gboolean
+editors_equal (CodeSlayerEditor *from_editor,
+               CodeSlayerEditor *to_editor)
 {
-  NavigationNode *node;
-  node = create_node (editor);
-
-  while (remove_node (engine, node))
-    ;
-
-  g_object_unref (node);
-
-  print_path (engine);
+  return g_strcmp0 (codeslayer_editor_get_file_path (from_editor), 
+                    codeslayer_editor_get_file_path (to_editor)) == 0;
 }
 
 static void
@@ -175,8 +156,36 @@ editor_navigated_action (NavigationEngine *engine,
   
   if (priv->path == NULL)
     {
-      priv->path = g_list_append (priv->path, create_node (from_editor));
-      priv->position = g_list_length (priv->path) - 1;
+      if (!editors_equal (from_editor, to_editor))
+        {
+          priv->path = g_list_append (priv->path, create_node (from_editor));
+          priv->position = 0;
+        }
+    }
+  else
+    {
+      NavigationNode *curr_node;
+      NavigationNode *from_node;
+    
+      clear_forward_positions (engine);
+      
+      curr_node = g_list_nth_data (priv->path, priv->position);
+      from_node = create_node (from_editor);
+      
+      if (!navigation_node_equals (curr_node, from_node))
+        {
+          g_list_foreach (priv->path, (GFunc) g_object_unref, NULL);
+          g_list_free (priv->path);
+          priv->path = NULL;
+
+          if (!editors_equal (from_editor, to_editor))
+            {
+              priv->path = g_list_append (priv->path, create_node (from_editor));
+              priv->position = 0;
+            }
+        }
+      
+      g_object_unref (from_node);      
     }
   
   priv->path = g_list_append (priv->path, create_node (to_editor));
