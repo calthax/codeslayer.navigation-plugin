@@ -23,12 +23,14 @@
 #include <glib.h>
 #include "navigation-engine.h"
 #include "navigation-menu.h"
+#include "navigation-pane.h"
 
 G_MODULE_EXPORT void activate          (CodeSlayer       *codeslayer);
 G_MODULE_EXPORT void deactivate        (CodeSlayer       *codeslayer);
 
 NavigationEngine *engine;
 GtkWidget *menu;
+GtkWidget *pane;
 
 G_MODULE_EXPORT void
 activate (CodeSlayer *codeslayer)
@@ -36,8 +38,13 @@ activate (CodeSlayer *codeslayer)
   GtkAccelGroup *accel_group;
   accel_group = codeslayer_get_menu_bar_accel_group (codeslayer);
   menu = navigation_menu_new (accel_group);
-  engine = navigation_engine_new (codeslayer, menu);
   codeslayer_add_to_menu_bar (codeslayer, GTK_MENU_ITEM (menu));  
+
+  pane = navigation_pane_new (codeslayer);
+
+  engine = navigation_engine_new (codeslayer, menu, pane);
+  
+  codeslayer_add_to_side_pane (codeslayer, pane, _("Navigation"));
 }
 
 G_MODULE_EXPORT void 
@@ -45,4 +52,6 @@ deactivate (CodeSlayer *codeslayer)
 {
   codeslayer_remove_from_menu_bar (codeslayer, GTK_MENU_ITEM (menu));
   g_object_unref (engine);
+  
+  codeslayer_remove_from_side_pane (codeslayer, pane);
 }

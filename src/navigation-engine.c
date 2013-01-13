@@ -17,6 +17,7 @@
  */
 
 #include "navigation-engine.h"
+#include "navigation-pane.h"
 #include "navigation-node.h"
 
 static void navigation_engine_class_init  (NavigationEngineClass *klass);
@@ -29,8 +30,6 @@ static void editor_navigated_action       (NavigationEngine      *engine,
 static void previous_action               (NavigationEngine      *engine);
 static void next_action                   (NavigationEngine      *engine);
 
-static void print_path                    (NavigationEngine      *engine);
-
 #define NAVIGATION_ENGINE_GET_PRIVATE(obj) \
   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), NAVIGATION_ENGINE_TYPE, NavigationEnginePrivate))
 
@@ -39,6 +38,7 @@ typedef struct _NavigationEnginePrivate NavigationEnginePrivate;
 struct _NavigationEnginePrivate
 {
   CodeSlayer *codeslayer;
+  GtkWidget  *pane;
   gulong      editor_switched_id;
   gulong      editor_navigated_id;
   GList      *path;
@@ -81,7 +81,8 @@ navigation_engine_finalize (NavigationEngine *engine)
 
 NavigationEngine*
 navigation_engine_new (CodeSlayer *codeslayer, 
-                       GtkWidget  *menu)
+                       GtkWidget  *menu, 
+                       GtkWidget  *pane)
 {
   NavigationEnginePrivate *priv;
   NavigationEngine *engine;
@@ -90,6 +91,7 @@ navigation_engine_new (CodeSlayer *codeslayer,
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
 
   priv->codeslayer = codeslayer;
+  priv->pane = pane;
   
   g_signal_connect_swapped (G_OBJECT (menu), "previous", 
                             G_CALLBACK (previous_action), engine);
@@ -199,7 +201,7 @@ editor_navigated_action (NavigationEngine *engine,
   priv->path = g_list_append (priv->path, create_node (to_editor));
   priv->position = g_list_length (priv->path) - 1;
 
-  print_path (engine);
+  navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
 }
 
 static void
@@ -226,7 +228,7 @@ previous_action (NavigationEngine *engine)
   
   codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number);
 
-  print_path (engine);
+  navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
 }
 
 static void
@@ -256,34 +258,5 @@ next_action (NavigationEngine *engine)
   
   codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number);
   
-  print_path (engine);
-}
-
-static void
-print_path (NavigationEngine *engine)
-{
-  NavigationEnginePrivate *priv;
-  gint length;
-  guint i = 0;
-  
-  priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  
-  g_print ("****** path ********\n");
-  
-  length = g_list_length (priv->path);
-  
-  for (; i < length; ++i)
-    {
-      NavigationNode *node = g_list_nth_data (priv->path, i);
-      const gchar *file_path;
-      gint line_number;
-      file_path = navigation_node_get_file_path (node);
-      line_number = navigation_node_get_line_number (node);
-      if (priv->position == i)
-        g_print ("%s:%d *\n", file_path, line_number);
-      else
-        g_print ("%s:%d\n", file_path, line_number);
-    }
-    
-  g_print ("**************************\n");
+  navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
 }
