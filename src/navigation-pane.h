@@ -41,6 +41,8 @@ struct _NavigationPane
 struct _NavigationPaneClass
 {
   GtkVBoxClass parent_class;
+
+  void (*select_position) (NavigationPane *pane);
 };
 
 GType navigation_pane_get_type (void) G_GNUC_CONST;
