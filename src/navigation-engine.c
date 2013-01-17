@@ -24,9 +24,11 @@ static void navigation_engine_class_init  (NavigationEngineClass *klass);
 static void navigation_engine_init        (NavigationEngine      *engine);
 static void navigation_engine_finalize    (NavigationEngine      *engine);
 
-static void editor_navigated_action       (NavigationEngine      *engine,
-                                           CodeSlayerEditor      *from_editor,
-                                           CodeSlayerEditor      *to_editor);
+static void path_navigated_action         (NavigationEngine      *engine,
+                                           gchar                 *from_file_path,
+                                           gint                   from_line_number,
+                                           gchar                 *to_file_path,
+                                           gint                   to_line_number);
 static void previous_action               (NavigationEngine      *engine);
 static void next_action                   (NavigationEngine      *engine);
 static void select_position_action        (NavigationEngine      *engine, 
@@ -105,25 +107,20 @@ navigation_engine_new (CodeSlayer *codeslayer,
   g_signal_connect_swapped (G_OBJECT (pane), "select-position", 
                             G_CALLBACK (select_position_action), engine);
                             
-  priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "editor-navigated", 
-                                                        G_CALLBACK (editor_navigated_action), engine);
+  priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "path-navigated", 
+                                                        G_CALLBACK (path_navigated_action), engine);
                                                       
   return engine;
 }
 
 static NavigationNode*
-create_node (CodeSlayerEditor *editor)
+create_node (gchar *file_path,
+             gint   line_number)
 {
   NavigationNode *node;
-  CodeSlayerDocument *document;
-
   node = navigation_node_new ();
-  
-  document = codeslayer_editor_get_document (editor);
-  
-  navigation_node_set_file_path (node, codeslayer_editor_get_file_path (editor)); 
-  navigation_node_set_line_number (node, codeslayer_document_get_line_number (document)); 
-
+  navigation_node_set_file_path (node, file_path); 
+  navigation_node_set_line_number (node, line_number); 
   return node;
 }
 
@@ -147,14 +144,6 @@ clear_forward_positions (NavigationEngine *engine)
 }
 
 static gboolean
-editors_equal (CodeSlayerEditor *from_editor,
-               CodeSlayerEditor *to_editor)
-{
-  return g_strcmp0 (codeslayer_editor_get_file_path (from_editor), 
-                    codeslayer_editor_get_file_path (to_editor)) == 0;
-}
-
-static gboolean
 nodes_equal (NavigationNode *from_node,
              NavigationNode *to_node)
 {
@@ -163,18 +152,20 @@ nodes_equal (NavigationNode *from_node,
 }
 
 static void
-editor_navigated_action (NavigationEngine *engine,
-                         CodeSlayerEditor *from_editor,
-                         CodeSlayerEditor *to_editor)
+path_navigated_action (NavigationEngine *engine,
+                       gchar            *from_file_path,
+                       gint              from_line_number,
+                       gchar            *to_file_path,
+                       gint              to_line_number)
 {
   NavigationEnginePrivate *priv;
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
   
   if (priv->path == NULL)
     {
-      if (!editors_equal (from_editor, to_editor))
+      if (g_strcmp0 (from_file_path, to_file_path) != 0)
         {
-          priv->path = g_list_append (priv->path, create_node (from_editor));
+          priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
           priv->position = 0;
         }
     }
@@ -186,15 +177,15 @@ editor_navigated_action (NavigationEngine *engine,
       clear_forward_positions (engine);
       
       curr_node = g_list_nth_data (priv->path, priv->position);
-      from_node = create_node (from_editor);
+      from_node = create_node (from_file_path, from_line_number);
       
       if (!nodes_equal (curr_node, from_node))
         {
           clear_path (engine);
 
-          if (!editors_equal (from_editor, to_editor))
+          if (g_strcmp0 (from_file_path, to_file_path) != 0)
             {
-              priv->path = g_list_append (priv->path, create_node (from_editor));
+              priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
               priv->position = 0;
             }
         }
@@ -202,7 +193,7 @@ editor_navigated_action (NavigationEngine *engine,
       g_object_unref (from_node);      
     }
   
-  priv->path = g_list_append (priv->path, create_node (to_editor));
+  priv->path = g_list_append (priv->path, create_node (to_file_path, to_line_number));
   priv->position = g_list_length (priv->path) - 1;
 
   navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
