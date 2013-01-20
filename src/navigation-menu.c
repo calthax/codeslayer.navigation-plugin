@@ -100,12 +100,12 @@ add_menu_items (NavigationMenu *menu,
 
   previous_item = codeslayer_menu_item_new_with_label (_("previous"));
   gtk_widget_add_accelerator (previous_item, "activate", accel_group, 
-                              GDK_KEY_comma, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
+                              GDK_KEY_Left, GDK_MOD1_MASK, GTK_ACCEL_VISIBLE); 
   gtk_menu_shell_append (GTK_MENU_SHELL (submenu), previous_item);
 
   next_item = codeslayer_menu_item_new_with_label (_("next"));
   gtk_widget_add_accelerator (next_item, "activate", accel_group, 
-                              GDK_KEY_period, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+                              GDK_KEY_Right, GDK_MOD1_MASK, GTK_ACCEL_VISIBLE);
   gtk_menu_shell_append (GTK_MENU_SHELL (submenu), next_item);
   
   g_signal_connect_swapped (G_OBJECT (previous_item), "activate", 

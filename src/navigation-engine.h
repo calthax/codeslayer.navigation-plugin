@@ -45,9 +45,10 @@ struct _NavigationEngineClass
 
 GType navigation_engine_get_type (void) G_GNUC_CONST;
 
-NavigationEngine*  navigation_engine_new  (CodeSlayer *codeslayer, 
-                                           GtkWidget  *menu, 
-                                           GtkWidget  *pane);
+NavigationEngine*  navigation_engine_new          (CodeSlayer       *codeslayer, 
+                                                   GtkWidget        *menu);
+
+void               navigation_engine_open_dialog  (NavigationEngine *engine);
 
 G_END_DECLS
 
