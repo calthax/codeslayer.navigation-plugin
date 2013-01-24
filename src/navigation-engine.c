@@ -135,23 +135,22 @@ static void
 clear_forward_positions (NavigationEngine *engine)
 {
   NavigationEnginePrivate *priv;
-  gint i;
   gint length;
-  
+
   priv = NAVIGATION_ENGINE_GET_PRIVATE (engine);
-  i = priv->position + 1;
   length = g_list_length (priv->path);
   
-  for (; i < length; i++)
+  while (priv->position < length - 1)
     {
-      NavigationNode *node = g_list_nth_data (priv->path, i);
+      NavigationNode *node = g_list_nth_data (priv->path, length - 1);
       priv->path = g_list_remove (priv->path, node);
       g_object_unref (node);
+      length = g_list_length (priv->path);
     }
 }
 
 static gboolean
-nodes_equal (NavigationNode *from_node,
+node_equals (NavigationNode *from_node,
              NavigationNode *to_node)
 {
   return g_strcmp0 (navigation_node_get_file_path (from_node), 
@@ -170,11 +169,8 @@ path_navigated_action (NavigationEngine *engine,
   
   if (priv->path == NULL)
     {
-      if (g_strcmp0 (from_file_path, to_file_path) != 0)
-        {
-          priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
-          priv->position = 0;
-        }
+      priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
+      priv->position = 0;
     }
   else
     {
@@ -186,15 +182,11 @@ path_navigated_action (NavigationEngine *engine,
       curr_node = g_list_nth_data (priv->path, priv->position);
       from_node = create_node (from_file_path, from_line_number);
       
-      if (!nodes_equal (curr_node, from_node))
+      if (!node_equals (curr_node, from_node))
         {
           clear_path (engine);
-
-          if (g_strcmp0 (from_file_path, to_file_path) != 0)
-            {
-              priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
-              priv->position = 0;
-            }
+          priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
+          priv->position = 0;
         }
       
       g_object_unref (from_node);      
