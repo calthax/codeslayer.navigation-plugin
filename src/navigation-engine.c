@@ -149,14 +149,6 @@ clear_forward_positions (NavigationEngine *engine)
     }
 }
 
-/*static gboolean
-node_equals (NavigationNode *from_node,
-             NavigationNode *to_node)
-{
-  return g_strcmp0 (navigation_node_get_file_path (from_node), 
-                    navigation_node_get_file_path (to_node)) == 0;
-}*/
-
 static void
 path_navigated_action (NavigationEngine *engine,
                        gchar            *from_file_path,
@@ -175,26 +167,34 @@ path_navigated_action (NavigationEngine *engine,
   else
     {
       NavigationNode *curr_node;
+      NavigationNode *from_node;
     
       clear_forward_positions (engine);
       
-      curr_node = g_list_nth_data (priv->path, priv->position);
+      curr_node = g_list_nth_data (priv->path, priv->position);      
+      from_node = create_node (from_file_path, from_line_number);
       
-      if (g_strcmp0 (navigation_node_get_file_path (curr_node), from_file_path) != 0)
+      if (!navigation_node_equals (curr_node, from_node))
         {
-          clear_path (engine);
-          priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
-          priv->position = 0;
+          priv->path = g_list_append (priv->path, from_node);
+          priv->position = g_list_length (priv->path) - 1;
         }
       else
         {
-          priv->path = g_list_append (priv->path, create_node (from_file_path, from_line_number));
-          priv->position = g_list_length (priv->path) - 1;
+          g_object_unref (from_node);        
         }
     }
   
   priv->path = g_list_append (priv->path, create_node (to_file_path, to_line_number));
   priv->position = g_list_length (priv->path) - 1;
+  
+  while (g_list_length (priv->path) > 25)
+    {
+      NavigationNode *first_node;
+      first_node = g_list_nth_data (priv->path, 0);
+      priv->path = g_list_remove (priv->path, first_node);
+      priv->position = g_list_length (priv->path) - 1;
+    }
 
   if (priv->pane != NULL)
     navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
