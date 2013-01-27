@@ -2,7 +2,7 @@
 lib=libnavigationcodeslayerplugin
 version=@PACKAGE_VERSION@
 name=Navigation
-description=A plugin to navigate through the open editors.
+description=A plugin to navigate a path through the editors.\nMust be used in combination with the Ctags plugin.
 authors=Jeff Johnston <jeff.johnston.mn@gmail.com>
 copyright=Copyright © 2011 Jeff Johnston
 website=http://codeslayer.org
