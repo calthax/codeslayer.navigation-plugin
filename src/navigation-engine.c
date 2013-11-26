@@ -50,8 +50,7 @@ struct _NavigationEnginePrivate
 {
   CodeSlayer *codeslayer;
   GtkWidget  *pane;
-  gulong      editor_switched_id;
-  gulong      editor_navigated_id;
+  gulong      path_navigated_id;
   GList      *path;
   gint        position;
 };
@@ -84,7 +83,7 @@ navigation_engine_finalize (NavigationEngine *engine)
   if (priv->pane != NULL)
     codeslayer_remove_from_side_pane (priv->codeslayer, priv->pane);
 
-  g_signal_handler_disconnect (priv->codeslayer, priv->editor_navigated_id);
+  g_signal_handler_disconnect (priv->codeslayer, priv->path_navigated_id);
 
   g_list_foreach (priv->path, (GFunc) g_object_unref, NULL);
   
@@ -114,7 +113,7 @@ navigation_engine_new (CodeSlayer *codeslayer,
   g_signal_connect_swapped (G_OBJECT (menu), "next", 
                             G_CALLBACK (next_action), engine);
 
-  priv->editor_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "path-navigated", 
+  priv->path_navigated_id = g_signal_connect_swapped (G_OBJECT (codeslayer), "path-navigated", 
                                                         G_CALLBACK (path_navigated_action), engine);
                                                       
   return engine;
@@ -220,7 +219,7 @@ previous_action (NavigationEngine *engine)
   file_path = navigation_node_get_file_path (node);
   line_number = navigation_node_get_line_number (node);
   
-  codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number);
+  codeslayer_select_document_by_file_path (priv->codeslayer, file_path, line_number);
 
   if (priv->pane != NULL)
     navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
@@ -249,7 +248,7 @@ next_action (NavigationEngine *engine)
   file_path = navigation_node_get_file_path (node);
   line_number = navigation_node_get_line_number (node);
   
-  if (codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number))
+  if (codeslayer_select_document_by_file_path (priv->codeslayer, file_path, line_number))
     {
       if (priv->pane != NULL)
         navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);
@@ -278,7 +277,7 @@ select_position_action (NavigationEngine *engine,
   file_path = navigation_node_get_file_path (node);
   line_number = navigation_node_get_line_number (node);
   
-  if (codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number))
+  if (codeslayer_select_document_by_file_path (priv->codeslayer, file_path, line_number))
     {
       if (priv->pane != NULL)
         navigation_pane_refresh_path (NAVIGATION_PANE (priv->pane), priv->path, priv->position);

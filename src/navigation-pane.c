@@ -248,7 +248,7 @@ select_path (NavigationPane    *pane,
                           LINE_NUMBER, &line_number,
                           POSITION, &position, -1);
 
-      codeslayer_select_editor_by_file_path (priv->codeslayer, file_path, line_number);
+      codeslayer_select_document_by_file_path (priv->codeslayer, file_path, line_number);
       
       g_signal_emit_by_name ((gpointer) pane, "select-position", position);
 
