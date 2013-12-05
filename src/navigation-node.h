@@ -20,7 +20,6 @@
 #define __NAVIGATION_NODE_H__
 
 #include <gtk/gtk.h>
-#include <codeslayer/codeslayer-group.h>
 #include <codeslayer/codeslayer-project.h>
 
 G_BEGIN_DECLS
